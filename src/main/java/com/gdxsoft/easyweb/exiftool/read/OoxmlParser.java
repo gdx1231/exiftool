@@ -140,13 +140,15 @@ public final class OoxmlParser {
         }
     }
 
-    /** app.xml: Pages / Words / Company. */
+    /** app.xml: Pages / Words / Company / Application. */
     private static void parseAppXml(ExifTool et, byte[] xml) {
         String s = new String(xml, StandardCharsets.UTF_8);
         String pages = textOf(s, "Pages");
         String words = textOf(s, "Words");
         String company = textOf(s, "Company");
         String template = textOf(s, "Template");
+        String application = textOf(s, "Application");
+        String appVersion = textOf(s, "AppVersion");
         if (pages != null) {
             et.foundTag("Pages", pages, 1, "XML", "XML");
         }
@@ -158,6 +160,12 @@ public final class OoxmlParser {
         }
         if (template != null) {
             et.foundTag("Template", template, 1, "XML", "XML");
+        }
+        if (application != null) {
+            et.foundTag("Application", application, 1, "XML", "XML");
+        }
+        if (appVersion != null) {
+            et.foundTag("AppVersion", appVersion, 1, "XML", "XML");
         }
     }
 

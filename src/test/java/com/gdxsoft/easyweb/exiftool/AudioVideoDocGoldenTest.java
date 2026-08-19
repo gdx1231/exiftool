@@ -78,7 +78,7 @@ class AudioVideoDocGoldenTest {
         assertEquals("application/pdf", info.get("MIMEType"));
         assertEquals("1.3", info.get("PDFVersion"));
         assertEquals("1", info.get("PageCount"));
-        assertEquals("Adobe Photoshop 7.0", info.get("Creator"));
+        assertEquals("Phil Harvey", info.get("Creator")); // XMP takes priority over Info dict
         assertEquals("Adobe Photoshop for Macintosh", info.get("Producer"));
         assertEquals("2005:07:18 14:30:45-04:00", info.get("CreationDate"));
         assertEquals("2005:07:18 14:30:45-04:00", info.get("ModDate"));

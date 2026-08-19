@@ -27,6 +27,9 @@ public final class PdfParser {
     public static void process(ExifTool et, byte[] data) {
         et.foundTag("FileType", "PDF", 1, "File", "File");
         et.foundTag("MIMEType", "application/pdf", 1, "File", "File");
+        // embedded IPTC (8BIM resource 0x0404) and XMP documents
+        parseEmbeddedIptc(et, data);
+        parseEmbeddedXmp(et, data);
         String s = new String(data, 0, Math.min(data.length, 64 * 1024), StandardCharsets.ISO_8859_1);
         // version
         Matcher v = Pattern.compile("%PDF-(\\d+\\.\\d+)").matcher(s);
@@ -70,9 +73,81 @@ public final class PdfParser {
                 if ("CreationDate".equals(name) || "ModDate".equals(name)) {
                     value = convertPdfDate(value);
                 }
-                et.foundTag(name, value, 1, "PDF", "PDF");
+                // Info dictionary is lower priority than the embedded XMP
+                et.foundTag(name, value, 0, "PDF", "PDF");
             }
         }
+    }
+
+    /** Scan for 8BIM resource blocks and extract the IPTC/NAA (0x0404) data. */
+    private static void parseEmbeddedIptc(ExifTool et, byte[] data) {
+        int pos = 0;
+        while (pos + 12 <= data.length) {
+            int idx = indexOf(data, pos, new byte[]{'8', 'B', 'I', 'M'});
+            if (idx < 0) {
+                break;
+            }
+            if (idx + 12 <= data.length) {
+                int resourceId = Binary.get16u(data, idx + 4, com.gdxsoft.easyweb.exiftool.ByteOrder.BIG_ENDIAN);
+                int nameLen = data[idx + 6] & 0xff;
+                // Pascal name is padded to an even length
+                int sizePos = idx + 7 + nameLen + ((nameLen + 1) & 1);
+                if (sizePos + 4 <= data.length) {
+                    int size = Binary.get32u(data, sizePos, com.gdxsoft.easyweb.exiftool.ByteOrder.BIG_ENDIAN);
+                    int dataStart = sizePos + 4;
+                    if (resourceId == 0x0404 && dataStart + size <= data.length) {
+                        IptcParser.process(et, data, dataStart, size);
+                    }
+                    pos = dataStart + size;
+                    continue;
+                }
+            }
+            pos = idx + 4;
+        }
+    }
+
+    /** Scan for embedded XMP documents (<?xpacket or <x:xmpmeta). */
+    private static void parseEmbeddedXmp(ExifTool et, byte[] data) {
+        int pos = 0;
+        while (pos < data.length) {
+            int idx = indexOf(data, pos, "<?xpacket".getBytes(StandardCharsets.ISO_8859_1));
+            int idx2 = indexOf(data, pos, "<x:xmpmeta".getBytes(StandardCharsets.ISO_8859_1));
+            int start;
+            if (idx < 0) {
+                start = idx2;
+            } else if (idx2 < 0) {
+                start = idx;
+            } else {
+                start = Math.min(idx, idx2);
+            }
+            if (start < 0) {
+                break;
+            }
+            int end = indexOf(data, start, "<?xpacket end".getBytes(StandardCharsets.ISO_8859_1));
+            if (end < 0) {
+                end = indexOf(data, start, "</x:xmpmeta>".getBytes(StandardCharsets.ISO_8859_1));
+            }
+            if (end < 0) {
+                break;
+            }
+            int docEnd = Math.min(end + 40, data.length);
+            String xml = new String(data, start, docEnd - start, StandardCharsets.UTF_8);
+            XmpParser.process(et, xml);
+            pos = docEnd;
+        }
+    }
+
+    private static int indexOf(byte[] data, int from, byte[] needle) {
+        outer:
+        for (int i = from; i + needle.length <= data.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (data[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
     }
 
     /** PDF date "D:YYYYMMDDHHmmSS+HH'mm'" -> "YYYY:MM:DD HH:mm:SS±HH:mm". */

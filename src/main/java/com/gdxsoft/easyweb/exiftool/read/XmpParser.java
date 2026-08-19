@@ -77,7 +77,10 @@ public final class XmpParser {
         }
         Matcher m = ELEMENT.matcher(xml);
         while (m.find()) {
-            String tag = m.group(2); // local name: dc:title -> Title, pdf:Author -> Author
+            // local name: dc:title -> Title, pdf:Author -> Author (capitalize first letter)
+            String local = m.group(2);
+            String tag = local.isEmpty() ? local
+                : Character.toUpperCase(local.charAt(0)) + local.substring(1);
             String body = m.group(3);
             String value;
             Matcher li = LI.matcher(body);
