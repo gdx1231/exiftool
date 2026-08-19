@@ -29,7 +29,7 @@ byte[] out = et.writeImage(fileBytes, Map.of(
 
 ```bash
 mvn compile        # Java 17+
-mvn test           # 80 个测试全绿
+mvn test           # 94 个测试全绿
 ```
 
 ## 命令行
@@ -53,9 +53,9 @@ java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Software= photo.j
 
 | 范围 | 内容 |
 |---|---|
-| **文件格式** | JPEG、TIFF、PNG、GIF、WebP、HEIC、MOV/MP4、RAF、NEF、CR2、MRW、DNG |
+| **文件格式** | 图像：JPEG、TIFF、BTF、PNG、GIF、WebP、HEIC、RAF、NEF、CR2、MRW、DNG；音频：MP3、FLAC、AAC、WAV、M4A；视频：MOV/MP4、AVI、MKV、WMV；文档：PDF、DOCX/XLSX/PPTX |
 | **EXIF 目录** | IFD0/IFD1、ExifIFD、GPS、InteropIFD、PrintIM、IPTC IIM、XMP（标准+扩展） |
-| **MakerNotes** | Nikon、Canon、FujiFilm、Minolta、Kodak、Casio（+ Sony PrintIM） |
+| **MakerNotes** | Nikon、Canon、FujiFilm、Minolta、Kodak、Casio、Sigma（+ Sony PrintIM） |
 | **内嵌 EXIF 读写** | JPEG APP1、WebP EXIF chunk、PNG eXIf、HEIC/AVIF meta/mdat item（全部读写） |
 | **值转换** | ~130 个查表 + 函数型转换器（CanonEv/APEX/GPS DMS/FormatString/UserComment/CFAPattern） |
 | **写路径** | EXIF（改/增/删，5 格式任意大小）+ XMP（JPEG/PNG/TIFF 改增）；MakerNotes/子目录/缩略图保留；HEIC 无 EXIF 自动新增 item |
@@ -132,11 +132,12 @@ src/test/resources/
 
 新增标签的流程：`exiftool -json` 取参考值 → 移植定义到 tables/ → golden test 断言 → 全量回归。
 
-## 路线图
+## 路线图（已完成项）
 
-- [ ] **GoPro/Sigma 等其余 MakerNotes**
-- [ ] **HEIC 新增 EXIF item**（当前仅更新已存在 item）
-- [ ] **CLI -G 组输出、PNG/TIFF 的 XMP 写**
+- [x] 其余 MakerNotes（Sigma；GoPro 被 exiftool 识别为 Unrecognized）
+- [x] HEIC 无 EXIF 自动新增 item
+- [x] CLI -G0~-G3 组输出、PNG/TIFF XMP 写
+- [x] BigTIFF、音频/视频/文档格式（MP3/FLAC/AAC/WAV/AVI/MKV/WMV/PDF/DOCX/XLSX）
 - [ ] **完整覆盖**（24.7 万行 Perl → 数年工程，当前聚焦常见场景）
 
 ## 参考
