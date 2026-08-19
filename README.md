@@ -4,6 +4,10 @@ Java 实现 ExifTool 元数据读写库。从 [ExifTool](https://exiftool.org)�
 
 > **License**：GPL-3.0（ExifTool 的 Java 衍生作品，版权声明见 NOTICE，完整许可见 LICENSE）
 
+## 项目来源
+
+本项目由 **Qwen Code** 辅助创建（模型：**deepseek-v4-flash**），从零到完整功能分 20 个阶段迭代完成：读取链路 → 写路径 → CLI → 长尾格式 → 内嵌 EXIF 读写，每个阶段均以 `exiftool -json` 输出做 golden test 验证等价性。
+
 ## 快速开始
 
 ```java
