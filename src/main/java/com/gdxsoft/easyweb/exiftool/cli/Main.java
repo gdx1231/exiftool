@@ -94,17 +94,18 @@ public final class Main {
                 if (rawOut) {
                     Map<String, Object> raw = et.getRawInfo();
                     if (!printTags.isEmpty()) {
-                        printSelected(raw, printTags, shortOut, null, null);
+                        printSelected(raw, printTags, shortOut, null, null, null, null);
                     } else {
-                        printAll(raw, shortOut, null, null);
+                        printAll(raw, shortOut, null, null, null, null);
                     }
                 } else if (jsonOut) {
                     printJson(info, f.getName());
                 } else if (!printTags.isEmpty()) {
                     printSelected(info, printTags, shortOut,
-                        et.getGroup0(), et.getGroup1());
+                        et.getGroup0(), et.getGroup1(), et.getGroup2(), et.getGroup3());
                 } else {
-                    printAll(info, shortOut, et.getGroup0(), et.getGroup1());
+                    printAll(info, shortOut,
+                        et.getGroup0(), et.getGroup1(), et.getGroup2(), et.getGroup3());
                 }
             } catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -117,31 +118,39 @@ public final class Main {
     }
 
     private static void printAll(Map<String, Object> info, boolean shortOut,
-        Map<String, String> group0, Map<String, String> group1) {
+        Map<String, String> group0, Map<String, String> group1,
+        Map<String, String> group2, Map<String, String> group3) {
         for (Map.Entry<String, Object> e : info.entrySet()) {
-            printOne(e.getKey(), e.getValue(), shortOut, group0, group1);
+            printOne(e.getKey(), e.getValue(), shortOut, group0, group1, group2, group3);
         }
     }
 
     private static void printSelected(Map<String, Object> info, List<String> tags, boolean shortOut,
-        Map<String, String> group0, Map<String, String> group1) {
+        Map<String, String> group0, Map<String, String> group1,
+        Map<String, String> group2, Map<String, String> group3) {
         for (String tag : tags) {
             Object v = info.get(tag);
             if (v != null) {
-                printOne(tag, v, shortOut, group0, group1);
+                printOne(tag, v, shortOut, group0, group1, group2, group3);
             }
         }
     }
 
     /** Print one tag with an optional [Group] prefix. */
     private static void printOne(String tag, Object v, boolean shortOut,
-        Map<String, String> group0, Map<String, String> group1) {
+        Map<String, String> group0, Map<String, String> group1,
+        Map<String, String> group2, Map<String, String> group3) {
         String prefix = "";
         if (groupFamily >= 0) {
-            String g = groupFamily == 1 ? (group1 != null ? group1.get(tag) : null)
-                : (group0 != null ? group0.get(tag) : null);
-            if (g != null) {
-                prefix = "[" + g + "] ";
+            Map<String, String> g = switch (groupFamily) {
+                case 0 -> group0;
+                case 1 -> group1;
+                case 2 -> group2;
+                default -> group3;
+            };
+            String name = g != null ? g.get(tag) : null;
+            if (name != null) {
+                prefix = "[" + name + "] ";
             }
         }
         if (shortOut) {

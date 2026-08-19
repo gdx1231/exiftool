@@ -234,6 +234,155 @@ public final class ExifTool {
     }
 
     /**
+     * Family-2 groups (Camera/Image/Time/Location/Author/Video/File/...),
+     * derived from the tag name by semantic classification rules.
+     */
+    public Map<String, String> getGroup2() {
+        Map<String, String> g2 = new LinkedHashMap<>();
+        for (String tag : value.keySet()) {
+            String c = classifyFamily2(tag);
+            if (c != null) {
+                g2.put(tag, c);
+            }
+        }
+        return g2;
+    }
+
+    /**
+     * Family-3 groups (vendor name: Canon/Nikon/FujiFilm/...), derived from the
+     * camera make for maker-note tags.
+     */
+    public Map<String, String> getGroup3() {
+        Map<String, String> g3 = new LinkedHashMap<>();
+        String vendor = make != null ? vendorShortName(make) : null;
+        if (vendor != null) {
+            for (Map.Entry<String, String> e : group0.entrySet()) {
+                if ("MakerNotes".equals(e.getValue())) {
+                    g3.put(e.getKey(), vendor);
+                }
+            }
+        }
+        return g3;
+    }
+
+    /** Semantic classification of a tag name into a family-2 category. */
+    private static String classifyFamily2(String tag) {
+        if (tag.startsWith("GPS")) {
+            return "Location";
+        }
+        if (tag.equals("FileType") || tag.equals("MIMEType") || tag.equals("ExifByteOrder")
+            || tag.equals("FileSize") || tag.equals("FileModifyDate")) {
+            return "File";
+        }
+        // camera parameters first: ExposureTime / ShutterSpeed contain "Time"/"Speed"
+        if (tag.startsWith("Flash") || tag.startsWith("Lens") || tag.startsWith("Focus")
+            || tag.startsWith("AF") || tag.startsWith("ISO") || tag.startsWith("Exposure")
+            || tag.startsWith("FNumber") || tag.startsWith("Focal") || tag.startsWith("MaxAperture")
+            || tag.startsWith("MinAperture") || tag.startsWith("Aperture")
+            || tag.startsWith("Shutter") || tag.startsWith("Brightness")
+            || tag.startsWith("Contrast") || tag.startsWith("Saturation")
+            || tag.startsWith("Sharpness") || tag.startsWith("Metering")
+            || tag.startsWith("WhiteBalance") || tag.startsWith("Quality")
+            || tag.startsWith("Camera") || tag.startsWith("Scene")
+            || tag.startsWith("Drive") || tag.startsWith("Bracket")
+            || tag.startsWith("SelfTimer") || tag.startsWith("Macro")
+            || tag.startsWith("Noise") || tag.startsWith("Gain")
+            || tag.startsWith("Subject") || tag.startsWith("Custom")
+            || tag.startsWith("Picture") || tag.startsWith("Tone")
+            || tag.startsWith("LightSource") || tag.startsWith("Sensitivity")
+            || tag.startsWith("Make") || tag.startsWith("Model")
+            || tag.startsWith("Serial") || tag.startsWith("ColorFilter")
+            || tag.startsWith("BWFilter") || tag.startsWith("InternalFlash")
+            || tag.startsWith("Firmware") || tag.startsWith("ImageStabilization")
+            || tag.startsWith("ExposureComp") || tag.startsWith("AEB")
+            || tag.startsWith("AEBB") || tag.startsWith("FlashExposure")
+            || tag.startsWith("FlashGuide") || tag.startsWith("DigitalZoom")
+            || tag.startsWith("OpticalZoom") || tag.startsWith("TotalZoom")
+            || tag.startsWith("Zoom") || tag.startsWith("FocalUnits")
+            || tag.startsWith("ISOSetting") || tag.startsWith("MeasuredEV")
+            || tag.startsWith("TargetAperture") || tag.startsWith("SequenceNumber")
+            || tag.startsWith("Interval") || tag.startsWith("FileNumber")
+            || tag.startsWith("LastFileNumber") || tag.startsWith("FolderName")
+            || tag.startsWith("Minolta") || tag.startsWith("Kodak")
+            || tag.startsWith("CanonImageType") || tag.startsWith("ColorHue")
+            || tag.startsWith("HueAdjustment") || tag.startsWith("ExposureIndex")
+            || tag.startsWith("BulbDuration") || tag.startsWith("SelfTimer2")
+            || tag.startsWith("NDFilter") || tag.startsWith("AutoRotate")
+            || tag.startsWith("AutoExposureBracketing") || tag.startsWith("SlowShutter")
+            || tag.startsWith("OpticalZoomCode") || tag.startsWith("FocusBracketing")) {
+            return "Camera";
+        }
+        if (tag.contains("Date") || tag.contains("Time") || tag.equals("Duration")) {
+            return "Time";
+        }
+        if (tag.equals("MajorBrand") || tag.equals("MinorVersion") || tag.equals("CompatibleBrands")
+            || tag.equals("CompressorID") || tag.equals("VendorID") || tag.equals("HandlerType")
+            || tag.equals("TimeScale") || tag.equals("TrackID") || tag.startsWith("Track")
+            || tag.equals("MovieHeaderVersion")) {
+            return "Video";
+        }
+        if (tag.equals("Artist") || tag.equals("Copyright") || tag.equals("Creator")
+            || tag.equals("Author") || tag.equals("Title") || tag.equals("Caption-Abstract")
+            || tag.startsWith("By-line") || tag.equals("Headline") || tag.equals("Keywords")
+            || tag.equals("OwnerName") || tag.equals("Credit") || tag.equals("Source")
+            || tag.equals("Rights") || tag.equals("Writer-Editor") || tag.equals("ObjectName")
+            || tag.equals("SpecialInstructions") || tag.equals("Description")) {
+            return "Author";
+        }
+        if (tag.contains("Width") || tag.contains("Height") || tag.contains("Size")
+            || tag.equals("BitsPerSample") || tag.equals("Compression")
+            || tag.equals("Resolution") || tag.startsWith("Resolution")
+            || tag.equals("Orientation") || tag.startsWith("YCbCr")
+            || tag.equals("ColorSpace") || tag.equals("ColorType")
+            || tag.equals("Interlace") || tag.equals("EncodingProcess")
+            || tag.equals("ComponentsConfiguration") || tag.equals("PhotometricInterpretation")
+            || tag.equals("PlanarConfiguration") || tag.equals("Predictor")
+            || tag.startsWith("Strip") || tag.startsWith("Row") || tag.startsWith("Tile")
+            || tag.equals("SubfileType") || tag.startsWith("Thumbnail")
+            || tag.startsWith("Preview") || tag.equals("Filter") || tag.equals("BitDepth")
+            || tag.equals("ColorMode") || tag.equals("ColorComponents")
+            || tag.equals("Megapixels") || tag.equals("ImageDescription")
+            || tag.startsWith("KodakImage") || tag.startsWith("Sensor")
+            || tag.equals("RawDepth") || tag.equals("StorageMethod")
+            || tag.equals("BayerPattern") || tag.equals("HasColorMap")) {
+            return "Image";
+        }
+        if (tag.equals("JFIFVersion") || tag.equals("GIFVersion") || tag.equals("Version")
+            || tag.equals("XMPToolkit") || tag.equals("HasExtendedXMP")
+            || tag.startsWith("PrintIM")) {
+            return "ExifTool";
+        }
+        return "Other";
+    }
+
+    /** Map a camera make to a short vendor name (family 3). */
+    private static String vendorShortName(String make) {
+        String m = make.toUpperCase(java.util.Locale.ROOT);
+        if (m.startsWith("NIKON")) {
+            return "Nikon";
+        }
+        if (m.startsWith("CANON")) {
+            return "Canon";
+        }
+        if (m.startsWith("FUJI")) {
+            return "FujiFilm";
+        }
+        if (m.startsWith("KONICA MINOLTA") || m.startsWith("MINOLTA")) {
+            return "Minolta";
+        }
+        if (m.startsWith("CASIO")) {
+            return "Casio";
+        }
+        if (m.startsWith("EASTMAN KODAK") || m.startsWith("KODAK")) {
+            return "Kodak";
+        }
+        if (m.startsWith("SONY")) {
+            return "Sony";
+        }
+        return make;
+    }
+
+    /**
      * Raw (unconverted) values, matching {@link #imageInfo} keys. The analogue
      * of exiftool's {@code GetValue($tag, 'Raw')}.
      */
