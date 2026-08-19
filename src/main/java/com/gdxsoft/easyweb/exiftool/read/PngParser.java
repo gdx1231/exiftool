@@ -28,8 +28,8 @@ public final class PngParser {
     }
 
     public static void process(ExifTool et, byte[] data) {
-        et.foundTag("FileType", "PNG", 1);
-        et.foundTag("MIMEType", "image/png", 1);
+        et.foundTag("FileType", "PNG", 1, "File", "File");
+        et.foundTag("MIMEType", "image/png", 1, "File", "File");
         int pos = PNG_SIG.length;
         while (pos + 8 <= data.length) {
             int len = Binary.get32u(data, pos, ByteOrder.BIG_ENDIAN);
@@ -60,9 +60,9 @@ public final class PngParser {
         int bitDepth = data[d + 8] & 0xff;
         int colorType = data[d + 9] & 0xff;
         int interlace = data[d + 12] & 0xff;
-        et.foundTag("ImageWidth", String.valueOf(width), 1);
-        et.foundTag("ImageHeight", String.valueOf(height), 1);
-        et.foundTag("BitDepth", String.valueOf(bitDepth), 1);
+        et.foundTag("ImageWidth", String.valueOf(width), 1, "PNG", "File");
+        et.foundTag("ImageHeight", String.valueOf(height), 1, "PNG", "File");
+        et.foundTag("BitDepth", String.valueOf(bitDepth), 1, "PNG", "File");
         et.foundTag("ColorType", switch (colorType) {
             case 0 -> "Grayscale";
             case 2 -> "RGB";
@@ -70,9 +70,9 @@ public final class PngParser {
             case 4 -> "GrayAlpha";
             case 6 -> "RGBA";
             default -> "Unknown (" + colorType + ")";
-        }, 1);
-        et.foundTag("Compression", "Deflate/Inflate", 1);
-        et.foundTag("Filter", "Adaptive", 1);
-        et.foundTag("Interlace", interlace == 0 ? "Noninterlaced" : "Interlaced", 1);
+        }, 1, "PNG", "File");
+        et.foundTag("Compression", "Deflate/Inflate", 1, "PNG", "File");
+        et.foundTag("Filter", "Adaptive", 1, "PNG", "File");
+        et.foundTag("Interlace", interlace == 0 ? "Noninterlaced" : "Interlaced", 1, "PNG", "File");
     }
 }

@@ -35,6 +35,8 @@ public final class ExifTool {
     private final Map<String, Object> value = new LinkedHashMap<>();
     private final Map<String, Object> rawValues = new LinkedHashMap<>();
     private final Map<String, Integer> priorities = new HashMap<>();
+    private final Map<String, String> group0 = new HashMap<>();
+    private final Map<String, String> group1 = new HashMap<>();
     private final List<String> warnings = new ArrayList<>();
     private String make;
     private String model;
@@ -52,6 +54,8 @@ public final class ExifTool {
         value.clear();
         rawValues.clear();
         priorities.clear();
+        group0.clear();
+        group1.clear();
         warnings.clear();
         make = null;
         model = null;
@@ -72,14 +76,14 @@ public final class ExifTool {
             } else if (QuickTimeParser.isIsoBmff(data)) {
                 QuickTimeParser.process(this, data);
             } else if (ExifParser.isTiff(data)) {
-                foundTag("FileType", "TIFF", 1);
+                foundTag("FileType", "TIFF", 1, "File", "File");
                 foundTag("MIMEType", "image/tiff", 1);
                 new ExifParser(this, data, 0).processTiff();
                 fixRawFileType(data);
             }
         }
         if (byteOrder != null) {
-            foundTag("ExifByteOrder", byteOrder, 1);
+            foundTag("ExifByteOrder", byteOrder, 1, "File", "File");
         }
         return Collections.unmodifiableMap(value);
     }
@@ -138,15 +142,15 @@ public final class ExifTool {
             return;
         }
         if (make.startsWith("NIKON")) {
-            foundTag("FileType", "NEF", 2);
+            foundTag("FileType", "NEF", 2, "File", "File");
             foundTag("MIMEType", "image/x-nikon-nef", 2);
         } else if (make.startsWith("Canon") && data.length >= 6
             && (Binary.get16u(data, 4, ByteOrder.BIG_ENDIAN) == 16
                 || Binary.get16u(data, 4, ByteOrder.LITTLE_ENDIAN) == 16)) {
-            foundTag("FileType", "CR2", 2);
+            foundTag("FileType", "CR2", 2, "File", "File");
             foundTag("MIMEType", "image/x-canon-cr2", 2);
         } else if (hasTiffTag(data, 0xc612)) { // DNGVersion
-            foundTag("FileType", "DNG", 2);
+            foundTag("FileType", "DNG", 2, "File", "File");
             foundTag("MIMEType", "image/x-adobe-dng", 2);
         }
     }
@@ -180,8 +184,23 @@ public final class ExifTool {
         foundTag(name, v, v, priority);
     }
 
+    /** Record a found tag with group membership. */
+    public void foundTag(String name, Object v, int priority, String group0, String group1) {
+        foundTag(name, v, v, priority, group0, group1);
+    }
+
     /** Record a found tag with its raw (pre-conversion) value. */
     public void foundTag(String name, Object raw, Object display, int priority) {
+        foundTag(name, raw, display, priority, null, null);
+    }
+
+    /**
+     * Record a found tag with its raw value and group membership.
+     *
+     * @param group0 family-0 group (EXIF/IPTC/XMP/File/MakerNotes/...)
+     * @param group1 family-1 group (IFD0/ExifIFD/GPS/Canon/...)
+     */
+    public void foundTag(String name, Object raw, Object display, int priority, String group0, String group1) {
         if ("Model".equals(name)) {
             // Model RawConv strips trailing blanks (Exif.pm 0x0110)
             raw = String.valueOf(raw).replaceAll("\\s+$", "");
@@ -192,12 +211,26 @@ public final class ExifTool {
             value.put(name, formatValue(display));
             rawValues.put(name, formatValue(raw));
             priorities.put(name, priority);
+            if (group0 != null) {
+                this.group0.put(name, group0);
+                this.group1.put(name, group1 != null ? group1 : group0);
+            }
         }
         if ("Make".equals(name)) {
             make = String.valueOf(raw);
         } else if ("Model".equals(name)) {
             model = String.valueOf(raw);
         }
+    }
+
+    /** Family-0 groups (EXIF/File/IPTC/XMP/MakerNotes/...), matching {@link #imageInfo} keys. */
+    public Map<String, String> getGroup0() {
+        return Collections.unmodifiableMap(group0);
+    }
+
+    /** Family-1 groups (IFD0/ExifIFD/GPS/Canon/...), matching {@link #imageInfo} keys. */
+    public Map<String, String> getGroup1() {
+        return Collections.unmodifiableMap(group1);
     }
 
     /**

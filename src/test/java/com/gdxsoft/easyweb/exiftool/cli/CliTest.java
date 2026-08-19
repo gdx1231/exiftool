@@ -75,6 +75,18 @@ class CliTest {
     }
 
     @Test
+    void groupOutput() throws Exception {
+        Path img = extract("/Canon.jpg");
+        String out = run("-G1", "-s", "-Make", "-ExposureTime", "-CameraType", img.toString());
+        assertTrue(out.contains("[IFD0] Make: Canon"), out);
+        assertTrue(out.contains("[ExifIFD] ExposureTime: 4"), out);
+        assertTrue(out.contains("[MakerNotes] CameraType: EOS Mid-range"), out);
+        String out0 = run("-G0", "-s", "-Make", img.toString());
+        assertTrue(out0.contains("[EXIF] Make: Canon"), out0);
+        Files.deleteIfExists(img);
+    }
+
+    @Test
     void noFileError() throws Exception {
         String cp = System.getProperty("java.class.path");
         Process p = new ProcessBuilder("java", "-cp", cp, "com.gdxsoft.easyweb.exiftool.cli.Main")

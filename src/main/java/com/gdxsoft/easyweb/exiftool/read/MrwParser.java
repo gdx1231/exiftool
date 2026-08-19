@@ -18,8 +18,8 @@ public final class MrwParser {
     }
 
     public static void process(ExifTool et, byte[] data) {
-        et.foundTag("FileType", "MRW", 1);
-        et.foundTag("MIMEType", "image/x-minolta-mrw", 1);
+        et.foundTag("FileType", "MRW", 1, "File", "File");
+        et.foundTag("MIMEType", "image/x-minolta-mrw", 1, "File", "File");
         int pos = 8; // header + file size
         while (pos + 8 <= data.length) {
             if (data[pos] != 0) {
@@ -38,7 +38,7 @@ public final class MrwParser {
                     }
                 }
                 case "PRD" -> BinaryDataParser.process(et, data, d, ByteOrder.BIG_ENDIAN,
-                    MrwTables.prd(), size);
+                    MrwTables.prd(), size, "MRW", "PRD");
                 default -> {
                     // WBG/RIF/CSA: not decoded in Phase 14
                 }

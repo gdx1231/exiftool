@@ -17,8 +17,8 @@ public final class JpegParser {
     }
 
     public static void process(ExifTool et, byte[] data) {
-        et.foundTag("FileType", "JPEG", 1);
-        et.foundTag("MIMEType", "image/jpeg", 1);
+        et.foundTag("FileType", "JPEG", 1, "File", "File");
+        et.foundTag("MIMEType", "image/jpeg", 1, "File", "File");
         int pos = 2; // skip SOI
         boolean haveSof = false;
         java.util.Map<String, java.util.List<byte[]>> extXmp = new java.util.HashMap<>();

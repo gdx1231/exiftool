@@ -73,7 +73,7 @@ public final class XmpParser {
     private static void process(ExifTool et, String xml, int priority) {
         Matcher tk = XMPTK.matcher(xml);
         if (tk.find()) {
-            et.foundTag("XMPToolkit", tk.group(1), priority);
+            et.foundTag("XMPToolkit", tk.group(1), priority, "XMP", "XMP");
         }
         Matcher m = ELEMENT.matcher(xml);
         while (m.find()) {
@@ -97,7 +97,7 @@ public final class XmpParser {
             if (value.isEmpty()) {
                 continue;
             }
-            et.foundTag(tag, fixDate(value), priority);
+            et.foundTag(tag, fixDate(value), priority, "XMP", "XMP");
         }
     }
 

@@ -75,7 +75,7 @@ public final class IptcParser {
             pos += len;
         }
         for (Map.Entry<Integer, StringBuilder> e : multi.entrySet()) {
-            et.foundTag(APP_RECORD.get(e.getKey()), e.getValue().toString(), 1);
+            et.foundTag(APP_RECORD.get(e.getKey()), e.getValue().toString(), 1, "IPTC", "IPTC");
         }
     }
 

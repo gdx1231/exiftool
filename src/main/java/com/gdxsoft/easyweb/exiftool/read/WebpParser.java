@@ -42,11 +42,11 @@ public final class WebpParser {
                         set.add(names[i]);
                     }
                 }
-                et.foundTag("WebP_Flags", String.join(", ", set), 1);
+                et.foundTag("WebP_Flags", String.join(", ", set), 1, "RIFF", "File");
                 int w = (int) (Binary.get32u(data, d + 4, ByteOrder.LITTLE_ENDIAN) & 0xffffffL) + 1;
                 int h = (int) (Binary.get32u(data, d + 6, ByteOrder.LITTLE_ENDIAN) & 0xffffffL) + 1;
-                et.foundTag("ImageWidth", String.valueOf(w), 1);
-                et.foundTag("ImageHeight", String.valueOf(h), 1);
+                et.foundTag("ImageWidth", String.valueOf(w), 1, "RIFF", "File");
+                et.foundTag("ImageHeight", String.valueOf(h), 1, "RIFF", "File");
             } else if ("EXIF".equals(id)) {
                 // embedded TIFF data (may or may not have an "Exif\0\0" header)
                 int tiffBase = d;
@@ -60,7 +60,7 @@ public final class WebpParser {
             }
             pos += 8 + len + (len & 1); // chunks are word-aligned
         }
-        et.foundTag("FileType", extended ? "Extended WEBP" : "WEBP", 1);
-        et.foundTag("MIMEType", "image/webp", 1);
+        et.foundTag("FileType", extended ? "Extended WEBP" : "WEBP", 1, "File", "File");
+        et.foundTag("MIMEType", "image/webp", 1, "File", "File");
     }
 }

@@ -46,9 +46,9 @@ public final class QuickTimeParser {
         } else {
             fileType = "MOV"; // moov-first files are QuickTime movies
         }
-        et.foundTag("FileType", fileType, 1);
+        et.foundTag("FileType", fileType, 1, "File", "File");
         et.foundTag("MIMEType", "HEIF".equals(fileType) ? "image/heif"
-            : "MOV".equals(fileType) ? "video/quicktime" : "video/mp4", 1);
+            : "MOV".equals(fileType) ? "video/quicktime" : "video/mp4", 1, "File", "File");
 
         Box meta = firstTopLevel(data, "meta");
         if (meta != null) {
@@ -92,8 +92,8 @@ public final class QuickTimeParser {
         }
         String major = new String(data, ftyp.dataStart, 4, StandardCharsets.ISO_8859_1);
         int minor = Binary.get32u(data, ftyp.dataStart + 4, ByteOrder.BIG_ENDIAN);
-        et.foundTag("MajorBrand", brandName(major), 1);
-        et.foundTag("MinorVersion", minorVersionString(minor), 1);
+        et.foundTag("MajorBrand", brandName(major), 1, "QuickTime", "File");
+        et.foundTag("MinorVersion", minorVersionString(minor), 1, "QuickTime", "File");
         // compatible brands
         StringBuilder brands = new StringBuilder();
         int pos = ftyp.dataStart + 8;
@@ -106,7 +106,7 @@ public final class QuickTimeParser {
             pos += 4;
         }
         if (brands.length() > 0) {
-            et.foundTag("CompatibleBrands", brands.toString(), 1);
+            et.foundTag("CompatibleBrands", brands.toString(), 1, "QuickTime", "File");
         }
     }
 
@@ -120,12 +120,12 @@ public final class QuickTimeParser {
                 case "soun" -> "Audio";
                 case "text" -> "Text";
                 default -> handler.trim();
-            }, 1);
+            }, 1, "QuickTime", "File");
         }
         Box pitm = meta.findChild(data, "pitm");
         if (pitm != null && pitm.dataStart + 6 <= meta.end()) {
             long id = Binary.get32u(data, pitm.dataStart + 2, ByteOrder.BIG_ENDIAN) & 0xffffffffL;
-            et.foundTag("PrimaryItemReference", String.valueOf(id), 1);
+            et.foundTag("PrimaryItemReference", String.valueOf(id), 1, "QuickTime", "File");
         }
         // image spatial extents: meta/iprp/ipco/ispe
         Box iprp = meta.findChild(data, "iprp");
@@ -141,8 +141,8 @@ public final class QuickTimeParser {
                     if ("ispe".equals(b.type) && b.dataStart + 9 <= b.end()) {
                         int w = Binary.get32u(data, b.dataStart + 4, ByteOrder.BIG_ENDIAN);
                         int h = Binary.get32u(data, b.dataStart + 8, ByteOrder.BIG_ENDIAN);
-                        et.foundTag("ImageWidth", String.valueOf(w), 1);
-                        et.foundTag("ImageHeight", String.valueOf(h), 1);
+                        et.foundTag("ImageWidth", String.valueOf(w), 1, "QuickTime", "File");
+                        et.foundTag("ImageHeight", String.valueOf(h), 1, "QuickTime", "File");
                         break;
                     }
                     pos = b.end();
@@ -186,12 +186,12 @@ public final class QuickTimeParser {
             long modify = Binary.get32u(data, d + 8, ByteOrder.BIG_ENDIAN) & 0xffffffffL;
             long timescale = Binary.get32u(data, d + 12, ByteOrder.BIG_ENDIAN) & 0xffffffffL;
             long duration = Binary.get32u(data, d + 16, ByteOrder.BIG_ENDIAN) & 0xffffffffL;
-            et.foundTag("MovieHeaderVersion", String.valueOf(version), 1);
-            et.foundTag("CreateDate", quickTimeDate(create), 1);
-            et.foundTag("ModifyDate", quickTimeDate(modify), 1);
-            et.foundTag("TimeScale", String.valueOf(timescale), 1);
+            et.foundTag("MovieHeaderVersion", String.valueOf(version), 1, "QuickTime", "File");
+            et.foundTag("CreateDate", quickTimeDate(create), 1, "QuickTime", "File");
+            et.foundTag("ModifyDate", quickTimeDate(modify), 1, "QuickTime", "File");
+            et.foundTag("TimeScale", String.valueOf(timescale), 1, "QuickTime", "File");
             if (timescale > 0) {
-                et.foundTag("Duration", String.format("%.2f s", duration / (double) timescale), 1);
+                et.foundTag("Duration", String.format("%.2f s", duration / (double) timescale), 1, "QuickTime", "File");
             }
         }
     }
@@ -206,12 +206,12 @@ public final class QuickTimeParser {
             long duration = Binary.get32u(data, d + 20, ByteOrder.BIG_ENDIAN) & 0xffffffffL;
             int width = (int) (Binary.get32u(data, d + 76, ByteOrder.BIG_ENDIAN) >> 16);
             int height = (int) (Binary.get32u(data, d + 80, ByteOrder.BIG_ENDIAN) >> 16);
-            et.foundTag("TrackCreateDate", quickTimeDate(create), 1);
-            et.foundTag("TrackModifyDate", quickTimeDate(modify), 1);
-            et.foundTag("TrackID", String.valueOf(trackId), 1);
-            et.foundTag("TrackDuration", String.format("%.2f s", duration / 600.0), 1);
-            et.foundTag("ImageWidth", String.valueOf(width), 1);
-            et.foundTag("ImageHeight", String.valueOf(height), 1);
+            et.foundTag("TrackCreateDate", quickTimeDate(create), 1, "QuickTime", "File");
+            et.foundTag("TrackModifyDate", quickTimeDate(modify), 1, "QuickTime", "File");
+            et.foundTag("TrackID", String.valueOf(trackId), 1, "QuickTime", "File");
+            et.foundTag("TrackDuration", String.format("%.2f s", duration / 600.0), 1, "QuickTime", "File");
+            et.foundTag("ImageWidth", String.valueOf(width), 1, "QuickTime", "File");
+            et.foundTag("ImageHeight", String.valueOf(height), 1, "QuickTime", "File");
         }
     }
 
@@ -222,12 +222,12 @@ public final class QuickTimeParser {
             // sample entry: size(4) + type(4) -> CompressorID
             String codec = new String(data, d + 4, 4, StandardCharsets.ISO_8859_1).trim();
             if (!codec.isEmpty()) {
-                et.foundTag("CompressorID", codec, 1);
+                et.foundTag("CompressorID", codec, 1, "QuickTime", "File");
             }
             String vendor = new String(data, d + 20, 4, StandardCharsets.ISO_8859_1).trim();
             String vendorName = vendorName(vendor);
             if (vendorName != null) {
-                et.foundTag("VendorID", vendorName, 1);
+                et.foundTag("VendorID", vendorName, 1, "QuickTime", "File");
             }
         }
     }

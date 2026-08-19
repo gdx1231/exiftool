@@ -29,7 +29,7 @@ byte[] out = et.writeImage(fileBytes, Map.of(
 
 ```bash
 mvn compile        # Java 17+
-mvn test           # 74 个测试全绿
+mvn test           # 75 个测试全绿
 ```
 
 ## 命令行
@@ -39,11 +39,12 @@ mvn test           # 74 个测试全绿
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -s -Model photo.jpg
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -json photo.jpg
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -n -s -Orientation photo.jpg   # raw 值
+java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -G1 -s -Make photo.jpg          # 组前缀（[IFD0]）
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Artist="John Doe" photo.jpg   # 写入（EXIF）
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Title="My Title" photo.jpg    # 写入（XMP）
 java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Software= photo.jpg           # 删除
 
-# 支持参数：-s（简短）、-json、-n（raw）、-TAG（打印指定标签）、-TAG=VALUE（写）、-TAG=（删）
+# 支持参数：-s（简短）、-json、-n（raw）、-G/-G0/-G1（组前缀）、-TAG（打印）、-TAG=VALUE（写）、-TAG=（删）
 ```
 
 ## 已支持
@@ -56,7 +57,7 @@ java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Software= photo.j
 | **内嵌 EXIF 读写** | JPEG APP1、WebP EXIF chunk、PNG eXIf、HEIC/AVIF meta/mdat item（全部读写） |
 | **值转换** | ~130 个查表 + 函数型转换器（CanonEv/APEX/GPS DMS/FormatString/UserComment/CFAPattern） |
 | **写路径** | EXIF（改/增/删，5 格式任意大小）+ XMP（改/增）；MakerNotes/子目录/缩略图保留 |
-| **CLI** | exiftool 参数子集（-s/-json/-n/-TAG/-TAG=VALUE） |
+| **CLI** | exiftool 参数子集（-s/-json/-n/-G/-G0/-G1/-TAG/-TAG=VALUE） |
 
 ### 写路径
 

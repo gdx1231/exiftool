@@ -27,6 +27,9 @@ import com.gdxsoft.easyweb.exiftool.ExifTool;
  */
 public final class Main {
 
+    /** Selected group family (-1 = none, 0/1/2/3 = family), used by printOne. */
+    private static int groupFamily = -1;
+
     public static void main(String[] args) throws IOException {
         List<String> files = new ArrayList<>();
         Map<String, String> writes = new LinkedHashMap<>();
@@ -45,6 +48,8 @@ public final class Main {
                 jsonOut = true;
             } else if (arg.equals("-n")) {
                 rawOut = true;
+            } else if (arg.matches("-G[0-3]?")) {
+                groupFamily = arg.length() > 2 ? Integer.parseInt(arg.substring(2)) : 1;
             } else if (arg.startsWith("-") && !arg.equals("-")) {
                 String opt = arg.substring(1);
                 int eq = opt.indexOf('=');
@@ -89,16 +94,17 @@ public final class Main {
                 if (rawOut) {
                     Map<String, Object> raw = et.getRawInfo();
                     if (!printTags.isEmpty()) {
-                        printSelected(raw, printTags, shortOut);
+                        printSelected(raw, printTags, shortOut, null, null);
                     } else {
-                        printAll(raw, shortOut);
+                        printAll(raw, shortOut, null, null);
                     }
                 } else if (jsonOut) {
                     printJson(info, f.getName());
                 } else if (!printTags.isEmpty()) {
-                    printSelected(info, printTags, shortOut);
+                    printSelected(info, printTags, shortOut,
+                        et.getGroup0(), et.getGroup1());
                 } else {
-                    printAll(info, shortOut);
+                    printAll(info, shortOut, et.getGroup0(), et.getGroup1());
                 }
             } catch (Exception e) {
                 System.err.println("Error: " + e.getMessage());
@@ -110,26 +116,38 @@ public final class Main {
         }
     }
 
-    private static void printAll(Map<String, Object> info, boolean shortOut) {
+    private static void printAll(Map<String, Object> info, boolean shortOut,
+        Map<String, String> group0, Map<String, String> group1) {
         for (Map.Entry<String, Object> e : info.entrySet()) {
-            if (shortOut) {
-                System.out.println(e.getKey() + ": " + e.getValue());
-            } else {
-                System.out.printf("%-30s : %s%n", e.getKey(), e.getValue());
+            printOne(e.getKey(), e.getValue(), shortOut, group0, group1);
+        }
+    }
+
+    private static void printSelected(Map<String, Object> info, List<String> tags, boolean shortOut,
+        Map<String, String> group0, Map<String, String> group1) {
+        for (String tag : tags) {
+            Object v = info.get(tag);
+            if (v != null) {
+                printOne(tag, v, shortOut, group0, group1);
             }
         }
     }
 
-    private static void printSelected(Map<String, Object> info, List<String> tags, boolean shortOut) {
-        for (String tag : tags) {
-            Object v = info.get(tag);
-            if (v != null) {
-                if (shortOut) {
-                    System.out.println(tag + ": " + v);
-                } else {
-                    System.out.printf("%-30s : %s%n", tag, v);
-                }
+    /** Print one tag with an optional [Group] prefix. */
+    private static void printOne(String tag, Object v, boolean shortOut,
+        Map<String, String> group0, Map<String, String> group1) {
+        String prefix = "";
+        if (groupFamily >= 0) {
+            String g = groupFamily == 1 ? (group1 != null ? group1.get(tag) : null)
+                : (group0 != null ? group0.get(tag) : null);
+            if (g != null) {
+                prefix = "[" + g + "] ";
             }
+        }
+        if (shortOut) {
+            System.out.println(prefix + tag + ": " + v);
+        } else {
+            System.out.printf("%-30s : %s%n", prefix + tag, v);
         }
     }
 
@@ -182,12 +200,15 @@ public final class Main {
             Options:
               -s                short output format
               -json             output as JSON
+              -n                print raw values
+              -G, -G0, -G1      print group names ([EXIF]/[IFD0]/...)
               -TAG              print only the specified tag
               -TAG=VALUE        write the tag (display string; empty value deletes)
               -h, --help        show this help
 
             Example:
               exiftool -s -Model photo.jpg
+              exiftool -G1 -Make -ExposureTime photo.jpg
               exiftool -Artist="John Doe" photo.jpg
             """);
     }

@@ -24,6 +24,15 @@ public final class ExifParser {
     /** ExifIFD MakerNote pointer tag. */
     private static final int TAG_MAKER_NOTE = 0x927c;
 
+    /** Map a family-1 directory name to its family-0 group. */
+    private static String group0Of(String dirName) {
+        return switch (dirName) {
+            case "IFD0", "IFD1", "ExifIFD", "GPS", "InteropIFD", "PreviewIFD" -> "EXIF";
+            case "IPTC" -> "IPTC";
+            default -> "MakerNotes"; // MakerNotes and its sub-directories
+        };
+    }
+
     private final ExifTool et;
     private final byte[] data;
     private final int tiffBase;
@@ -137,7 +146,8 @@ public final class ExifParser {
                 if ("IPTC".equals(sub.dirName())) {
                     IptcParser.process(et, data, valuePos + sub.startOffset(), (int) size);
                 } else if (subTable.isBinaryData()) {
-                    BinaryDataParser.process(et, data, valuePos + sub.startOffset(), order, subTable, (int) size);
+                    BinaryDataParser.process(et, data, valuePos + sub.startOffset(), order, subTable,
+                        (int) size, group0Of(dirName), dirName);
                 } else {
                     processIFD(valueOff, sub.dirName(), subTable);
                 }
@@ -154,7 +164,7 @@ public final class ExifParser {
                 converted = n.longValue() + dirBase;
             }
             int priority = info.prioritySet() ? info.priority() : (lowPriorityDir ? 0 : 1);
-            et.foundTag(info.name(), raw, converted, priority);
+            et.foundTag(info.name(), raw, converted, priority, group0Of(dirName), dirName);
         }
 
         // next-IFD pointer (IFD0 -> IFD1 for thumbnails)

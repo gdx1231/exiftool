@@ -20,18 +20,18 @@ public final class GifParser {
     }
 
     public static void process(ExifTool et, byte[] data) {
-        et.foundTag("FileType", "GIF", 1);
-        et.foundTag("MIMEType", "image/gif", 1);
-        et.foundTag("GIFVersion", new String(data, 3, 3, StandardCharsets.ISO_8859_1), 1);
+        et.foundTag("FileType", "GIF", 1, "File", "File");
+        et.foundTag("MIMEType", "image/gif", 1, "File", "File");
+        et.foundTag("GIFVersion", new String(data, 3, 3, StandardCharsets.ISO_8859_1), 1, "GIF", "File");
         if (data.length < 13) {
             return;
         }
         int width = Binary.get16u(data, 6, ByteOrder.LITTLE_ENDIAN);
         int height = Binary.get16u(data, 8, ByteOrder.LITTLE_ENDIAN);
         int flags = data[10] & 0xff;
-        et.foundTag("ImageWidth", String.valueOf(width), 1);
-        et.foundTag("ImageHeight", String.valueOf(height), 1);
-        et.foundTag("HasColorMap", (flags & 0x80) != 0 ? "Yes" : "No", 1);
+        et.foundTag("ImageWidth", String.valueOf(width), 1, "GIF", "File");
+        et.foundTag("ImageHeight", String.valueOf(height), 1, "GIF", "File");
+        et.foundTag("HasColorMap", (flags & 0x80) != 0 ? "Yes" : "No", 1, "GIF", "File");
     }
 
     private static boolean startsWith(byte[] data, String prefix) {

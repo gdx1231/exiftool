@@ -23,6 +23,14 @@ public final class BinaryDataParser {
 
     /** Process all known tags in the binary block starting at {@code base}. */
     public static void process(ExifTool et, byte[] data, int base, ByteOrder order, TagTable table, int length) {
+        process(et, data, base, order, table, length, null, null);
+    }
+
+    /**
+     * Process a binary block with group membership (family-0 and family-1 groups).
+     */
+    public static void process(ExifTool et, byte[] data, int base, ByteOrder order, TagTable table, int length,
+        String group0, String group1) {
         // the entry increment is the table's default format size (Perl $increment)
         ExifFormat incrementFormat = ExifFormat.fromName(table.defaultFormat());
         if (incrementFormat == ExifFormat.NONE) {
@@ -53,7 +61,11 @@ public final class BinaryDataParser {
             }
             Object display = info.printConv().convert(v);
             int priority = info.prioritySet() ? info.priority() : 1;
-            et.foundTag(info.name(), raw, display, priority);
+            if (group0 != null) {
+                et.foundTag(info.name(), raw, display, priority, group0, group1);
+            } else {
+                et.foundTag(info.name(), raw, display, priority);
+            }
         }
     }
 

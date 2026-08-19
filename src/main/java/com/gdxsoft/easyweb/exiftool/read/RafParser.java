@@ -27,8 +27,8 @@ public final class RafParser {
     }
 
     public static void process(ExifTool et, byte[] data) {
-        et.foundTag("FileType", "RAF", 1);
-        et.foundTag("MIMEType", "image/x-fujifilm-raf", 1);
+        et.foundTag("FileType", "RAF", 1, "File", "File");
+        et.foundTag("MIMEType", "image/x-fujifilm-raf", 1, "File", "File");
         int tiff = findTiff(data);
         if (tiff > 0) {
             new ExifParser(et, data, tiff).processTiff();
