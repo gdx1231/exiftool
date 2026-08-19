@@ -14,10 +14,13 @@ import com.gdxsoft.easyweb.exiftool.read.Binary;
 import com.gdxsoft.easyweb.exiftool.read.ExifParser;
 import com.gdxsoft.easyweb.exiftool.read.GifParser;
 import com.gdxsoft.easyweb.exiftool.read.JpegParser;
+import com.gdxsoft.easyweb.exiftool.read.Mp3Parser;
 import com.gdxsoft.easyweb.exiftool.read.MrwParser;
+import com.gdxsoft.easyweb.exiftool.read.PdfParser;
 import com.gdxsoft.easyweb.exiftool.read.PngParser;
 import com.gdxsoft.easyweb.exiftool.read.QuickTimeParser;
 import com.gdxsoft.easyweb.exiftool.read.RafParser;
+import com.gdxsoft.easyweb.exiftool.read.RiffParser;
 import com.gdxsoft.easyweb.exiftool.read.WebpParser;
 
 /**
@@ -73,6 +76,12 @@ public final class ExifTool {
                 RafParser.process(this, data);
             } else if (MrwParser.isMrw(data)) {
                 MrwParser.process(this, data);
+            } else if (Mp3Parser.isMp3(data)) {
+                Mp3Parser.process(this, data);
+            } else if (RiffParser.isRiff(data)) {
+                RiffParser.process(this, data);
+            } else if (PdfParser.isPdf(data)) {
+                PdfParser.process(this, data);
             } else if (QuickTimeParser.isIsoBmff(data)) {
                 QuickTimeParser.process(this, data);
             } else if (ExifParser.isTiff(data)) {
