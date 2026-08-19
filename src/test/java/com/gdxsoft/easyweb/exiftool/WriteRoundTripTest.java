@@ -254,4 +254,56 @@ class WriteRoundTripTest {
         assertEquals("1596", info.get("ImageWidth"));
         assertEquals("Picture", info.get("HandlerType"));
     }
+
+    @Test
+    void heicAddExifToFileWithoutExif() throws IOException {
+        ExifTool et = new ExifTool();
+        // QuickTime.heic has no Exif item: the rewriter must create one
+        byte[] out = et.writeImage(resource("/QuickTime.heic"),
+            Map.of("Make", "NewMaker", "Artist", "NewArtist"));
+        Map<String, Object> info = et.imageInfo(out);
+        assertEquals("NewMaker", info.get("Make"));
+        assertEquals("NewArtist", info.get("Artist"));
+        // box-level tags preserved
+        assertEquals("HEIF", info.get("FileType"));
+        assertEquals("1596", info.get("ImageWidth"));
+        assertEquals("Picture", info.get("HandlerType"));
+    }
+
+    @Test
+    void pngXmpRoundTrip() throws IOException {
+        ExifTool et = new ExifTool();
+        // update existing tEXt chunk (Title)
+        byte[] out = et.writeImage(resource("/png_exif.png"),
+            Map.of("Title", "New PNG Title"));
+        Map<String, Object> info = et.imageInfo(out);
+        assertEquals("New PNG Title", info.get("Title"));
+        assertEquals("PNG", info.get("FileType"));
+        assertEquals("Grayscale", info.get("ColorType"));
+    }
+
+    @Test
+    void pngXmpAddToFileWithoutXmp() throws IOException {
+        ExifTool et = new ExifTool();
+        byte[] out = et.writeImage(resource("/PNG.png"),
+            Map.of("Title", "Brand New Title"));
+        Map<String, Object> info = et.imageInfo(out);
+        assertEquals("Brand New Title", info.get("Title"));
+        assertEquals("16", info.get("ImageWidth"));
+    }
+
+    @Test
+    void tiffXmpRoundTrip() throws IOException {
+        ExifTool et = new ExifTool();
+        byte[] out = et.writeImage(resource("/ExifTool.tif"),
+            Map.of("Title", "Tiff Title", "Artist", "Tiff Artist"));
+        Map<String, Object> info = et.imageInfo(out);
+        assertEquals("Tiff Title", info.get("Title"));
+        assertEquals("Tiff Artist", info.get("Artist"));
+        assertEquals("Canon", info.get("Make"));
+        // update again
+        byte[] out2 = et.writeImage(out, Map.of("Title", "New Tiff Title"));
+        assertEquals("New Tiff Title", et.imageInfo(out2).get("Title"));
+        assertEquals("Tiff Artist", et.imageInfo(out2).get("Artist"));
+    }
 }

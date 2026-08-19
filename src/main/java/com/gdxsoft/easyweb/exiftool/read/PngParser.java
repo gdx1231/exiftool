@@ -49,8 +49,68 @@ public final class PngParser {
                     tiffBase = dataStart + 6;
                 }
                 new ExifParser(et, data, tiffBase).processTiff();
+            } else if ("iTXt".equals(type) || "tEXt".equals(type) || "zTXt".equals(type)) {
+                processTextChunk(et, data, dataStart, len, type);
             }
             pos += 8 + len + 4; // length + type + data + CRC
+        }
+    }
+
+    /** PNG text tags whose tEXt keyword maps to a tag name. */
+    private static final java.util.Map<String, String> TEXT_TAGS = java.util.Map.ofEntries(
+        java.util.Map.entry("Title", "Title"), java.util.Map.entry("Artist", "Artist"),
+        java.util.Map.entry("Author", "Author"), java.util.Map.entry("Copyright", "Copyright"),
+        java.util.Map.entry("Description", "Description"), java.util.Map.entry("Comment", "Comment"),
+        java.util.Map.entry("Software", "Software"), java.util.Map.entry("Creation Time", "CreateDate"),
+        java.util.Map.entry("Disclaimer", "Disclaimer"), java.util.Map.entry("Warning", "Warning"),
+        java.util.Map.entry("Source", "Source"));
+
+    /** Parse a text chunk: keyword + text (iTXt has extra header fields). */
+    private static void processTextChunk(ExifTool et, byte[] data, int dataStart, int len, String type) {
+        int kwEnd = dataStart;
+        while (kwEnd < dataStart + len && data[kwEnd] != 0) {
+            kwEnd++;
+        }
+        String keyword = new String(data, dataStart, kwEnd - dataStart, StandardCharsets.ISO_8859_1);
+        if ("XML:com.adobe.xmp".equals(keyword)) {
+            int textStart = kwEnd + 1;
+            if ("iTXt".equals(type)) {
+                // iTXt: keyword\0 + flag(1) + method(1) + lang\0 + translated\0 + text
+                textStart += 2;
+                while (textStart < dataStart + len && data[textStart] != 0) {
+                    textStart++;
+                }
+                textStart++;
+                while (textStart < dataStart + len && data[textStart] != 0) {
+                    textStart++;
+                }
+                textStart++;
+            }
+            String xml = new String(data, textStart, dataStart + len - textStart, StandardCharsets.UTF_8);
+            XmpParser.process(et, xml);
+            return;
+        }
+        // plain text tag (tEXt or uncompressed iTXt)
+        String tag = TEXT_TAGS.get(keyword);
+        if (tag == null) {
+            return;
+        }
+        int textStart = kwEnd + 1;
+        if ("iTXt".equals(type)) {
+            textStart += 2;
+            while (textStart < dataStart + len && data[textStart] != 0) {
+                textStart++;
+            }
+            textStart++;
+            while (textStart < dataStart + len && data[textStart] != 0) {
+                textStart++;
+            }
+            textStart++;
+        }
+        String text = new String(data, textStart, dataStart + len - textStart,
+            StandardCharsets.ISO_8859_1);
+        if (!text.isEmpty()) {
+            et.foundTag(tag, text, 1, "PNG", "PNG");
         }
     }
 

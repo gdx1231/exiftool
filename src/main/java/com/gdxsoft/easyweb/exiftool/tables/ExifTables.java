@@ -138,6 +138,7 @@ public final class ExifTables {
         t.add(simple(0x0214, "ReferenceBlackWhite"));
         t.add(TagInfo.builder(0x8298, "Copyright").writable("string").build());
         t.add(TagInfo.builder(0x83bb, "IPTC-NAA").subDirectory("IPTC", null).build());
+        t.add(TagInfo.builder(0x02BC, "XMP").writable("undef").build());
         t.add(simple(0x85D8, "ModelTransform"));
 
         // ---- pointer tags (SubDirectory) ----

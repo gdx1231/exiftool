@@ -32,6 +32,7 @@ public final class TiffRewriter {
     private static final int TAG_INTEROP = 0xa005;
     private static final int TAG_MAKER_NOTE = 0x927c;
     private static final int TAG_IPTC = 0x83bb;
+    private static final int TAG_XMP = 0x02bc;
     private static final int TAG_THUMBNAIL_OFFSET = 0x0201;
     private static final int TAG_THUMBNAIL_LENGTH = 0x0202;
 
@@ -177,6 +178,17 @@ public final class TiffRewriter {
                 entry.subIfd = prepareIfd(valueOff, false);
             } else if (entry.tagId == TAG_IPTC) {
                 // opaque block, no internal offsets
+            } else if (entry.tagId == TAG_XMP) {
+                // XMP: rebuild the XML document from XMP tag updates
+                byte[] xml = entry.raw;
+                byte[] updated = rebuildXmp(xml, updates);
+                if (updated != null) {
+                    entry.raw = updated;
+                    entry.count = updated.length / format.size();
+                    if (entry.count == 0) {
+                        entry.count = 1;
+                    }
+                }
             } else {
                 applyUpdate(entry);
                 if (entry.tagId == 0x010F) {
@@ -196,6 +208,31 @@ public final class TiffRewriter {
     /** Append tags from the update map that are not already present (IFD0). */
     private void addNewTags(List<Entry> entries) {
         List<Entry> exifIfdTags = new ArrayList<>();
+        // XMP document tags: collect and add a 0x02BC entry when absent
+        Map<String, Object> xmpUpdates = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Object> u : updates.entrySet()) {
+            if (u.getValue() != null && XmpWriter.TAGS.contains(u.getKey())) {
+                xmpUpdates.put(u.getKey(), u.getValue());
+            }
+        }
+        if (!xmpUpdates.isEmpty()) {
+            boolean hasXmp = false;
+            for (Entry e : entries) {
+                if (e.tagId == TAG_XMP) {
+                    hasXmp = true;
+                    break;
+                }
+            }
+            if (!hasXmp) {
+                Entry entry = new Entry();
+                entry.tagId = TAG_XMP;
+                entry.formatCode = ExifFormat.UNDEF.code();
+                byte[] xml = XmpWriter.build(xmpUpdates);
+                entry.raw = java.util.Arrays.copyOf(xml, xml.length + 1);
+                entry.count = entry.raw.length;
+                entries.add(entry);
+            }
+        }
         for (Map.Entry<String, Object> u : updates.entrySet()) {
             if (u.getValue() == null) {
                 continue; // deletion
@@ -310,6 +347,29 @@ public final class TiffRewriter {
     private String tagName(int tagId) {
         TagInfo info = ExifTables.main().get(tagId);
         return info != null ? info.name() : null;
+    }
+
+    /**
+     * Rebuild an XMP document (0x02BC value) applying the XMP tag updates.
+     * Returns null if there are no XMP updates.
+     */
+    private byte[] rebuildXmp(byte[] xml, Map<String, Object> updates) {
+        Map<String, Object> xmpUpdates = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : updates.entrySet()) {
+            if (XmpWriter.TAGS.contains(e.getKey()) && e.getValue() != null) {
+                xmpUpdates.put(e.getKey(), e.getValue());
+            }
+        }
+        if (xmpUpdates.isEmpty()) {
+            return null;
+        }
+        String s = new String(xml, java.nio.charset.StandardCharsets.UTF_8).replaceAll("\0+$", "");
+        byte[] out = s.isEmpty() ? XmpWriter.build(xmpUpdates) : XmpWriter.update(s.getBytes(
+            java.nio.charset.StandardCharsets.UTF_8), xmpUpdates);
+        if (out == null) {
+            return null;
+        }
+        return java.util.Arrays.copyOf(out, out.length + 1); // null-terminated
     }
 
     private String detectMakerNote(int valuePtr) {

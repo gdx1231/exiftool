@@ -93,7 +93,7 @@ public final class HeicRewriter {
             }
         }
         if (exif == null) {
-            return data;
+            return addExifItem(data, items, iloc, updates);
         }
         byte[] newPayload = rebuildItem(data, (int) exif.absPos(), (int) exif.extentLength, updates);
         if (newPayload == null) {
@@ -117,6 +117,162 @@ public final class HeicRewriter {
         return out;
     }
 
+    /**
+     * Add a new Exif item to a HEIC that has none: append an infe entry to iinf,
+     * an entry to iloc, and a new mdat box at the end of the file. All absolute
+     * offsets in iloc shift by the size growth of the meta box.
+     */
+    private static byte[] addExifItem(byte[] data, List<Item> items, Box iloc, Map<String, Object> updates) {
+        if (!hasXmpOrExif(updates)) {
+            return data;
+        }
+        // new item ID = max existing + 1
+        int newId = 0;
+        for (Item it : items) {
+            newId = Math.max(newId, it.id);
+        }
+        newId++;
+
+        Box meta = firstTopLevel(data, "meta");
+        Box iinf = meta.findChild(data, "iinf");
+        if (iinf == null) {
+            return data;
+        }
+        // build the new Exif payload: 4-byte header len + "Exif\0\0" + TIFF
+        byte[] exifTiff = TiffRewriter.rewrite(minimalTiff(), ByteOrder.BIG_ENDIAN, updates);
+        int headerLen = 6;
+        byte[] payload = new byte[4 + headerLen + exifTiff.length];
+        writeUInt(payload, 0, headerLen, 4);
+        System.arraycopy(new byte[]{'E', 'x', 'i', 'f', 0, 0}, 0, payload, 4, headerLen);
+        System.arraycopy(exifTiff, 0, payload, 4 + headerLen, exifTiff.length);
+
+        // --- layout math ---
+        int ilocOldSize = iloc.size;
+        int ilocNewSize = ilocOldSize + 18; // one more 18-byte item entry
+        int infeSize = 4 + 4 + 4 + 2 + 2 + 4 + 5; // size + type + fullbox + id + prot + item_type + "Exif\0"
+        int shiftAfterIloc = 18;
+        int shiftAfterIinf = 18 + infeSize;
+
+        // new mdat appended at the end of the new file: everything before it
+        // shifts by the iloc (+18) and iinf (+infeSize) growth
+        int newMdatStart = data.length + 18 + infeSize;
+        long newBase = newMdatStart + 8; // payload start
+
+        byte[] out = new byte[data.length + 18 + infeSize + 8 + payload.length];
+        // 1. copy everything up to the iloc box
+        System.arraycopy(data, 0, out, 0, iloc.offset);
+        int pos = iloc.offset;
+        // 1b. meta box size grows by the iloc and iinf growth
+        writeUInt(out, meta.offset, meta.size + 18 + infeSize, 4);
+        // 2. iloc with the new entry (and item_count +1)
+        pos = writeIlocWithNewItem(out, pos, data, iloc, newId, newBase, payload.length, shiftAfterIinf, items);
+        // 3. copy from after iloc up to iinf (shifted by 18)
+        int afterIloc = iloc.offset + ilocOldSize;
+        int oldIinfPos = iinf.offset;
+        System.arraycopy(data, afterIloc, out, pos, oldIinfPos - afterIloc);
+        pos += oldIinfPos - afterIloc;
+        // 4. iinf with the new infe entry (size + infeSize, count +1)
+        pos = writeIinfWithNewEntry(out, pos, data, iinf, newId, infeSize);
+        // 5. copy the rest after iinf (shifted by 18 + infeSize)
+        int afterIinf = iinf.offset + iinf.size;
+        System.arraycopy(data, afterIinf, out, pos, data.length - afterIinf);
+        pos += data.length - afterIinf;
+        // 6. new mdat box
+        writeUInt(out, pos, 8 + payload.length, 4);
+        System.arraycopy("mdat".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), 0, out, pos + 4, 4);
+        System.arraycopy(payload, 0, out, pos + 8, payload.length);
+        return out;
+    }
+
+    private static boolean hasXmpOrExif(Map<String, Object> updates) {
+        for (Map.Entry<String, Object> e : updates.entrySet()) {
+            if (e.getValue() != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static byte[] minimalTiff() {
+        return new byte[]{'M', 'M', 0, 42, 0, 0, 0, 8};
+    }
+
+    /** Write the rebuilt iloc (old entries shifted, new entry appended). */
+    private static int writeIlocWithNewItem(byte[] out, int pos, byte[] data, Box iloc,
+        int newId, long newBase, int newLength, int baseShift, List<Item> items) {
+        int oldSize = iloc.size;
+        // copy the original iloc bytes (header + fullbox + sizes + item_count)
+        int d = iloc.dataStart;
+        System.arraycopy(data, iloc.offset, out, pos, d + 6 - iloc.offset);
+        // item_count + 1 (2 bytes at d+6)
+        int count = Binary.get16u(data, d + 6, ByteOrder.BIG_ENDIAN);
+        writeUInt(out, pos + (d + 6 - iloc.offset), count + 1, 2);
+        // entries start at d+8
+        int p = d + 8;
+        for (Item it : items) {
+            // ID(2) + ref(2) + base(4) + count(2) + offset(4) + length(4)
+            writeUInt(out, pos + (p - iloc.offset), it.id, 2);
+            writeUInt(out, pos + (p - iloc.offset + 2), 0, 2); // data reference
+            writeUInt(out, pos + (p - iloc.offset + 4), it.base + baseShift, 4);
+            writeUInt(out, pos + (p - iloc.offset + 8), 1, 2); // extent count
+            writeUInt(out, pos + (p - iloc.offset + 10), it.extentOffset, 4);
+            writeUInt(out, pos + (p - iloc.offset + 14), it.extentLength, 4);
+            p += 18;
+        }
+        // new entry
+        writeUInt(out, pos + (p - iloc.offset), newId, 2);
+        writeUInt(out, pos + (p - iloc.offset + 2), 0, 2);
+        writeUInt(out, pos + (p - iloc.offset + 4), newBase, 4);
+        writeUInt(out, pos + (p - iloc.offset + 8), 1, 2);
+        writeUInt(out, pos + (p - iloc.offset + 10), 0, 4);
+        writeUInt(out, pos + (p - iloc.offset + 14), newLength, 4);
+        // iloc box size
+        writeUInt(out, pos, oldSize + 18, 4);
+        return pos + oldSize + 18;
+    }
+
+    /** Write the rebuilt iinf (count +1, infe entry appended). */
+    private static int writeIinfWithNewEntry(byte[] out, int pos, byte[] data, Box iinf,
+        int newId, int infeSize) {
+        int oldSize = iinf.size;
+        // copy the original iinf (header + fullbox + item_count)
+        int d = iinf.dataStart;
+        int version = data[d];
+        System.arraycopy(data, iinf.offset, out, pos, d + 4 - iinf.offset);
+        // item_count: v2 uses 4 bytes at d+4, older versions 2 bytes at d+4
+        int countPos = d + 4;
+        long count = version == 2
+            ? (readUInt(data, countPos, 4) & 0xffffffffL)
+            : (readUInt(data, countPos, 2) & 0xffffL);
+        if (version == 2) {
+            writeUInt(out, pos + (countPos - iinf.offset), count + 1, 4);
+        } else {
+            writeUInt(out, pos + (countPos - iinf.offset), count + 1, 2);
+        }
+        int p = d + (version == 2 ? 8 : 6);
+        // copy existing infe entries
+        int end = iinf.end();
+        while (p + 8 < end) {
+            int sz = (int) readUInt(data, p, 4);
+            if (p + sz > end) {
+                break;
+            }
+            System.arraycopy(data, p, out, pos + (p - iinf.offset), sz);
+            p += sz;
+        }
+        // new infe: size + "infe" + fullbox(v2) + id + prot + type + "Exif\0"
+        int infePos = pos + (p - iinf.offset);
+        writeUInt(out, infePos, infeSize, 4);
+        System.arraycopy("infe".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), 0, out, infePos + 4, 4);
+        out[infePos + 8] = 2; // version
+        writeUInt(out, infePos + 12, newId, 2);
+        writeUInt(out, infePos + 14, 0, 2); // protection
+        System.arraycopy("Exif".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), 0, out, infePos + 16, 4);
+        out[infePos + 20] = 0; // name terminator
+        // iinf box size
+        writeUInt(out, pos, oldSize + infeSize, 4);
+        return pos + oldSize + infeSize;
+    }
     /**
      * Insertion: the rebuilt payload is larger, so all item data after the old
      * Exif item shifts; mdat size and affected iloc offsets are updated.

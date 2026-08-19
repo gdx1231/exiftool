@@ -23,6 +23,8 @@ public final class ExifParser {
     private static final int TIFF_MAGIC = 42;
     /** ExifIFD MakerNote pointer tag. */
     private static final int TAG_MAKER_NOTE = 0x927c;
+    /** IFD0 XMP tag. */
+    private static final int TAG_XMP = 0x02bc;
 
     /** Map a family-1 directory name to its family-0 group. */
     private static String group0Of(String dirName) {
@@ -132,6 +134,16 @@ public final class ExifParser {
             if (tagId == TAG_MAKER_NOTE && "ExifIFD".equals(dirName)) {
                 int mnSize = raw instanceof byte[] b ? b.length : 0;
                 processMakerNote(valueOff, mnSize);
+                continue;
+            }
+
+            // XMP (0x02BC): parse the XML document
+            if (tagId == TAG_XMP && raw instanceof byte[] b) {
+                String xml = new String(b, java.nio.charset.StandardCharsets.UTF_8)
+                    .replaceAll("\0+$", "");
+                if (!xml.isEmpty()) {
+                    XmpParser.process(et, xml);
+                }
                 continue;
             }
 

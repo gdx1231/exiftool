@@ -58,10 +58,17 @@ public final class QuickTimeParser {
         if (moov != null) {
             processMoov(et, data, moov);
         }
-        // HEIC/AVIF embed EXIF as an "Exif" item in the mdat box
-        Box mdat = firstTopLevel(data, "mdat");
-        if (mdat != null) {
-            processEmbeddedExif(et, data, mdat);
+        // HEIC/AVIF embed EXIF as an "Exif" item in an mdat box (may be multiple)
+        int p = 0;
+        while (p + 8 <= data.length) {
+            Box b = Box.read(data, p);
+            if (b == null) {
+                break;
+            }
+            if ("mdat".equals(b.type)) {
+                processEmbeddedExif(et, data, b);
+            }
+            p = b.end();
         }
     }
 

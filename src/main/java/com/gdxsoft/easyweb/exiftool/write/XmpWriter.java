@@ -2,6 +2,7 @@ package com.gdxsoft.easyweb.exiftool.write;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,6 +12,12 @@ import java.util.regex.Pattern;
  * (the reader maps by local name, so they read back correctly).
  */
 public final class XmpWriter {
+
+    /** Tag names that belong to the XMP group (routed to the XMP segment). */
+    public static final Set<String> TAGS = Set.of(
+        "XMPToolkit", "HasExtendedXMP", "Author", "Creator", "Title", "Description",
+        "Rights", "CreationDate", "ModDate", "Producer", "CreateDate", "CreatorTool",
+        "Label", "Rating", "Subject", "Language", "MetadataDate");
 
     private static final String XMP_PREFIX = "<x:xmpmeta xmlns:x='adobe:ns:meta/' x:xmptk='exiftool-java'>\n"
         + "<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>\n"

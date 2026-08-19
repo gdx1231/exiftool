@@ -29,7 +29,7 @@ byte[] out = et.writeImage(fileBytes, Map.of(
 
 ```bash
 mvn compile        # Java 17+
-mvn test           # 76 个测试全绿
+mvn test           # 80 个测试全绿
 ```
 
 ## 命令行
@@ -58,7 +58,7 @@ java -cp target/classes com.gdxsoft.easyweb.exiftool.cli.Main -Software= photo.j
 | **MakerNotes** | Nikon、Canon、FujiFilm、Minolta、Kodak、Casio（+ Sony PrintIM） |
 | **内嵌 EXIF 读写** | JPEG APP1、WebP EXIF chunk、PNG eXIf、HEIC/AVIF meta/mdat item（全部读写） |
 | **值转换** | ~130 个查表 + 函数型转换器（CanonEv/APEX/GPS DMS/FormatString/UserComment/CFAPattern） |
-| **写路径** | EXIF（改/增/删，5 格式任意大小）+ XMP（改/增）；MakerNotes/子目录/缩略图保留 |
+| **写路径** | EXIF（改/增/删，5 格式任意大小）+ XMP（JPEG/PNG/TIFF 改增）；MakerNotes/子目录/缩略图保留；HEIC 无 EXIF 自动新增 item |
 | **CLI** | exiftool 参数子集（-s/-json/-n/-G0~-G3/-TAG/-TAG=VALUE） |
 
 ### 写路径

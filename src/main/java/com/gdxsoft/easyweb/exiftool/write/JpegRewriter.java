@@ -20,12 +20,6 @@ public final class JpegRewriter {
     private static final byte[] XMP_NS = "http://ns.adobe.com/xap/1.0/\u0000"
         .getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
 
-    /** Tag names that belong to the XMP group. */
-    private static final Set<String> XMP_TAGS = Set.of(
-        "XMPToolkit", "HasExtendedXMP", "Author", "Creator", "Title", "Description",
-        "Rights", "CreationDate", "ModDate", "Producer", "CreateDate", "CreatorTool",
-        "Label", "Rating", "Subject", "Language", "MetadataDate");
-
     private JpegRewriter() {}
 
     /**
@@ -35,7 +29,7 @@ public final class JpegRewriter {
         Map<String, Object> exifUpdates = new HashMap<>();
         Map<String, Object> xmpUpdates = new HashMap<>();
         for (Map.Entry<String, Object> e : updates.entrySet()) {
-            if (XMP_TAGS.contains(e.getKey())) {
+            if (XmpWriter.TAGS.contains(e.getKey())) {
                 xmpUpdates.put(e.getKey(), e.getValue());
             } else {
                 exifUpdates.put(e.getKey(), e.getValue());
