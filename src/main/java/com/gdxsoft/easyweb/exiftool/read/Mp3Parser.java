@@ -33,7 +33,9 @@ public final class Mp3Parser {
         if (data.length >= 3 && data[0] == 'I' && data[1] == 'D' && data[2] == '3') {
             return true;
         }
-        return data.length >= 2 && (data[0] & 0xff) == 0xff && (data[1] & 0xe0) == 0xe0;
+        // MPEG frame sync: 0xFF + layer bits non-zero (AAC ADTS has layer = 00)
+        return data.length >= 2 && (data[0] & 0xff) == 0xff && (data[1] & 0xe0) == 0xe0
+            && (data[1] & 0x06) != 0;
     }
 
     public static void process(ExifTool et, byte[] data) {

@@ -10,12 +10,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.gdxsoft.easyweb.exiftool.read.AacParser;
+import com.gdxsoft.easyweb.exiftool.read.AsfParser;
 import com.gdxsoft.easyweb.exiftool.read.Binary;
 import com.gdxsoft.easyweb.exiftool.read.ExifParser;
+import com.gdxsoft.easyweb.exiftool.read.FlacParser;
 import com.gdxsoft.easyweb.exiftool.read.GifParser;
 import com.gdxsoft.easyweb.exiftool.read.JpegParser;
+import com.gdxsoft.easyweb.exiftool.read.MkvParser;
 import com.gdxsoft.easyweb.exiftool.read.Mp3Parser;
 import com.gdxsoft.easyweb.exiftool.read.MrwParser;
+import com.gdxsoft.easyweb.exiftool.read.OoxmlParser;
 import com.gdxsoft.easyweb.exiftool.read.PdfParser;
 import com.gdxsoft.easyweb.exiftool.read.PngParser;
 import com.gdxsoft.easyweb.exiftool.read.QuickTimeParser;
@@ -76,8 +81,20 @@ public final class ExifTool {
                 RafParser.process(this, data);
             } else if (MrwParser.isMrw(data)) {
                 MrwParser.process(this, data);
+            } else if (AacParser.isAac(data)) {
+                AacParser.process(this, data);
             } else if (Mp3Parser.isMp3(data)) {
                 Mp3Parser.process(this, data);
+            } else if (FlacParser.isFlac(data)) {
+                FlacParser.process(this, data);
+            } else if (AacParser.isAac(data)) {
+                AacParser.process(this, data);
+            } else if (MkvParser.isMkv(data)) {
+                MkvParser.process(this, data);
+            } else if (AsfParser.isAsf(data)) {
+                AsfParser.process(this, data);
+            } else if (OoxmlParser.isOoxml(data)) {
+                OoxmlParser.process(this, data);
             } else if (RiffParser.isRiff(data)) {
                 RiffParser.process(this, data);
             } else if (PdfParser.isPdf(data)) {
