@@ -76,8 +76,9 @@ public final class ExifTool {
             } else if (QuickTimeParser.isIsoBmff(data)) {
                 QuickTimeParser.process(this, data);
             } else if (ExifParser.isTiff(data)) {
-                foundTag("FileType", "TIFF", 1, "File", "File");
-                foundTag("MIMEType", "image/tiff", 1);
+                boolean bigTiff = data.length >= 4 && (data[2] == 43 || data[3] == 43);
+                foundTag("FileType", bigTiff ? "BTF" : "TIFF", 1, "File", "File");
+                foundTag("MIMEType", bigTiff ? "image/x-tiff-big" : "image/tiff", 1, "File", "File");
                 new ExifParser(this, data, 0).processTiff();
                 fixRawFileType(data);
             }

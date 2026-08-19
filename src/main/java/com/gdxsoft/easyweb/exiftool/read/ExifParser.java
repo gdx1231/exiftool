@@ -21,6 +21,7 @@ import com.gdxsoft.easyweb.exiftool.tables.ExifTables;
 public final class ExifParser {
 
     private static final int TIFF_MAGIC = 42;
+    private static final int BIGTIFF_MAGIC = 43;
     /** ExifIFD MakerNote pointer tag. */
     private static final int TAG_MAKER_NOTE = 0x927c;
     /** IFD0 XMP tag. */
@@ -42,6 +43,8 @@ public final class ExifParser {
     private ByteOrder order;
     /** Base for IFD-internal offsets; equals tiffBase except inside maker notes. */
     private int dirBase;
+    /** True when parsing a BigTIFF structure (magic 43, 8-byte offsets). */
+    private boolean bigTiff;
 
     public ExifParser(ExifTool et, byte[] data, int tiffBase) {
         this.et = et;
@@ -50,16 +53,18 @@ public final class ExifParser {
         this.dirBase = tiffBase;
     }
 
-    /** True if data starts with a TIFF header ("II*\0" or "MM\0*"). */
+    /** True if data starts with a TIFF header ("II*\0"/"MM\0*") or BigTIFF ("II+\0"/"MM\0+"). */
     public static boolean isTiff(byte[] data) {
         if (data.length < 4) {
             return false;
         }
         return (data[0] == 'I' && data[1] == 'I' && data[2] == 42 && data[3] == 0)
-            || (data[0] == 'M' && data[1] == 'M' && data[2] == 0 && data[3] == 42);
+            || (data[0] == 'M' && data[1] == 'M' && data[2] == 0 && data[3] == 42)
+            || (data[0] == 'I' && data[1] == 'I' && data[2] == 43 && data[3] == 0)
+            || (data[0] == 'M' && data[1] == 'M' && data[2] == 0 && data[3] == 43);
     }
 
-    /** Parse the TIFF header and the IFD0 chain starting at {@code tiffBase}. */
+    /** Parse the TIFF/BigTIFF header and the IFD0 chain starting at {@code tiffBase}. */
     public void processTiff() {
         if (data.length < tiffBase + 8) {
             return;
@@ -73,8 +78,16 @@ public final class ExifParser {
         } else {
             return;
         }
-        if (Binary.get16u(data, tiffBase + 2, order) != TIFF_MAGIC) {
-            return; // BigTIFF not supported in Phase 1
+        int magic = Binary.get16u(data, tiffBase + 2, order);
+        if (magic == BIGTIFF_MAGIC) {
+            // BigTIFF: magic 43 + 2 reserved bytes + 8-byte IFD0 offset
+            bigTiff = true;
+            long ifd0 = Binary.get64u(data, tiffBase + 8, order);
+            processIFD((int) ifd0, "IFD0", ExifTables.main());
+            return;
+        }
+        if (magic != TIFF_MAGIC) {
+            return;
         }
         int ifd0 = Binary.get32u(data, tiffBase + 4, order);
         processIFD(ifd0, "IFD0", ExifTables.main());
@@ -92,16 +105,26 @@ public final class ExifParser {
 
         // IFD1 and PreviewIFD are low-priority directories (Perl LOW_PRIORITY_DIR)
         boolean lowPriorityDir = "IFD1".equals(dirName) || "PreviewIFD".equals(dirName);
-        int numEntries = Binary.get16u(data, absDir, order);
+        // BigTIFF: 8-byte entry count, 20-byte entries, 8-byte next pointer;
+        // classic: 2-byte count, 12-byte entries, 4-byte next pointer
+        int entrySize = bigTiff ? 20 : 12;
+        int countSize = bigTiff ? 8 : 2;
+        long numEntries = bigTiff
+            ? Binary.get64u(data, absDir, order)
+            : (Binary.get16u(data, absDir, order) & 0xffffL);
         for (int i = 0; i < numEntries; i++) {
-            int entry = absDir + 2 + 12 * i;
-            if (entry + 12 > data.length) {
+            int entry = absDir + countSize + entrySize * i;
+            if (entry + entrySize > data.length) {
                 break;
             }
             int tagId = Binary.get16u(data, entry, order);
             int formatCode = Binary.get16u(data, entry + 2, order);
-            int count = Binary.get32u(data, entry + 4, order);
-            int valueOff = Binary.get32u(data, entry + 8, order);
+            long count = bigTiff
+                ? Binary.get64u(data, entry + 4, order)
+                : (Binary.get32u(data, entry + 4, order) & 0xffffffffL);
+            long valueOff = bigTiff
+                ? Binary.get64u(data, entry + 12, order)
+                : (Binary.get32u(data, entry + 8, order) & 0xffffffffL);
 
             TagInfo info = table.get(tagId);
             ExifFormat format = ExifFormat.fromCode(formatCode);
@@ -112,28 +135,30 @@ public final class ExifParser {
             if (info != null && info.format() != null) {
                 ExifFormat override = ExifFormat.fromName(info.format());
                 if (override != ExifFormat.NONE && override != format) {
-                    long origSize = (long) count * format.size();
+                    long origSize = count * format.size();
                     format = override;
-                    count = Math.max(1, (int) (origSize / format.size()));
+                    count = Math.max(1, origSize / format.size());
                 }
             }
 
-            long size = (long) count * format.size();
+            long size = count * format.size();
             Object raw;
             int valuePos;
-            if (size <= 4) {
-                // value is inline in the entry
-                valuePos = entry + 8;
-                raw = ValueReader.readValue(data, entry + 8, format, count, order);
+            // BigTIFF values up to 8 bytes are inline (entry + 12); classic up to 4 (entry + 8)
+            int inlineSize = bigTiff ? 8 : 4;
+            int inlineOffset = bigTiff ? 12 : 8;
+            if (size <= inlineSize) {
+                valuePos = entry + inlineOffset;
+                raw = ValueReader.readValue(data, entry + inlineOffset, format, (int) count, order);
             } else {
-                valuePos = dirBase + valueOff;
-                raw = ValueReader.readValue(data, dirBase + valueOff, format, count, order);
+                valuePos = dirBase + (int) valueOff;
+                raw = ValueReader.readValue(data, dirBase + (int) valueOff, format, (int) count, order);
             }
 
             // MakerNote pointer: dispatch by vendor signature/make
             if (tagId == TAG_MAKER_NOTE && "ExifIFD".equals(dirName)) {
                 int mnSize = raw instanceof byte[] b ? b.length : 0;
-                processMakerNote(valueOff, mnSize);
+                processMakerNote((int) valueOff, mnSize);
                 continue;
             }
 
@@ -161,7 +186,7 @@ public final class ExifParser {
                     BinaryDataParser.process(et, data, valuePos + sub.startOffset(), order, subTable,
                         (int) size, group0Of(dirName), dirName);
                 } else {
-                    processIFD(valueOff, sub.dirName(), subTable);
+                    processIFD((int) valueOff, sub.dirName(), subTable);
                 }
                 continue;
             }
@@ -180,9 +205,12 @@ public final class ExifParser {
         }
 
         // next-IFD pointer (IFD0 -> IFD1 for thumbnails)
-        int nextOff = Binary.get32u(data, absDir + 2 + 12 * numEntries, order);
+        int nextPos = absDir + countSize + entrySize * (int) numEntries;
+        long nextOff = bigTiff
+            ? Binary.get64u(data, nextPos, order)
+            : (Binary.get32u(data, nextPos, order) & 0xffffffffL);
         if (nextOff != 0 && "IFD0".equals(dirName)) {
-            processIFD(nextOff, "IFD1", table);
+            processIFD((int) nextOff, "IFD1", table);
         }
     }
 

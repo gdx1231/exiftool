@@ -48,6 +48,13 @@ public final class MakerNotes {
             return new MakerNoteInfo(valuePtr + 12, ByteOrder.LITTLE_ENDIAN, 0, valuePtr,
                 com.gdxsoft.easyweb.exiftool.tables.FujiTables.main());
         }
+        if (startsWith(data, valuePtr, new byte[]{'S', 'I', 'G', 'M', 'A', 0, 0, 0})) {
+            // Sigma: 8-byte "SIGMA\0\0\0" header + 2-byte version; IFD at valuePtr + 10.
+            //   In-IFD value offsets are relative to the EXIF TIFF header (like Canon).
+            //   Little-endian.
+            return new MakerNoteInfo(valuePtr + 10, ByteOrder.LITTLE_ENDIAN, 0, exifTiffBase,
+                com.gdxsoft.easyweb.exiftool.tables.SigmaTables.main());
+        }
         if (make != null && make.startsWith("Canon")) {
             // Canon: plain IFD starting at the value; value offsets are relative to the
             // EXIF TIFF header (base fix from the 8-byte TIFF footer is ignored when the
